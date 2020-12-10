@@ -35,23 +35,29 @@ describe("Interbase Conversion tests", () => {
     const from = Array.from({ length: r1 }, (_, i) => i) as TwoPlus<number>;  
     for(let r2 = 2; r2 <= 12; ++r2) {
       const to = Array.from({ length: r2 }, (_, i) => i+1) as TwoPlus<number>;
+      const c = new BaseConverter(from, to);
 
       describe(`Converting from base ${ r1 } to base ${ r2 }`, () => {
-        const c = new BaseConverter(from, to);
         for (const n of integers) {
-          it(`should roundtrip ${ n } through bases ${ r1 } and ${ r2 } in little-endian representation`, () => {
-            const m = BaseConverter.fromIterable(
-              c.convertLE(BaseConverter.toIterable(n, from)),
-              to,
-            );
+          it(`should roundtrip ${ n } through bases ${ r1 } and ${ r2 } in big-endian representation`, () => {
+            const source = BaseConverter.toArray(n, from);
+            const target = BaseConverter.toArray(n, to);
+            
+            const test = c.convertBE(source);
+            expect(test).to.eql(target);
+
+            const m = BaseConverter.fromArray(test, to);
             expect(''+m).to.eql(''+n);
           });
 
-          it(`should roundtrip ${ n } through bases ${ r1 } and ${ r2 } in big-endian representation`, () => {
-            const m = BaseConverter.fromArray(
-              c.convertBE(BaseConverter.toArray(n, from)),
-              to,
-            );
+          it(`should roundtrip ${ n } through bases ${ r1 } and ${ r2 } in little-endian representation`, () => {
+            const source = BaseConverter.toIterable(n, from);
+            const target = [...BaseConverter.toIterable(n, to)];
+            
+            const test = [...c.convertLE(source)];
+            expect(test).to.eql(target);
+
+            const m = BaseConverter.fromIterable(test, to);
             expect(''+m).to.eql(''+n);
           });
         }

@@ -24,6 +24,14 @@ function fromArray<T>(digits: T[], radix: bigint, sym2val: Map<T, bigint>) {
   return v;
 }
 
+function * passthru<A, B>(digits: Iterable<A>, sym2val: Map<A, bigint>, to: B[]) {
+  for (const d of digits) {
+    const t = sym2val.get(d);
+    if (t === void 0) throw new Error("Unrecognized digit");
+    yield to[Number(t)];
+  }
+}
+
 export class BaseConverter<A,B> {
   private from: Map<A, bigint>;
   private fb: bigint;
@@ -38,29 +46,22 @@ export class BaseConverter<A,B> {
   }
 
   * convertLE(digits: Iterable<A>) {
-    const { from: sym2val, to } = this;
-    if (this.passthru) {
-      for (const d of digits) {
-        const t = sym2val.get(d);
-        if (t === void 0) throw new Error("Unrecognized digit");
-        yield to[Number(t)];
-      }
-    } else {
-      yield * this.toIterable(this.fromIterable(digits));
+    const { from: sym2val, to, tb } = this;
+    if (this.passthru) yield * passthru(digits, sym2val, to);
+    else {
+      let n = this.fromIterable(digits);
+      for (; n > 0n; n/= tb) yield to[Number(n % tb)];
     }
   }
 
   convertBE(digits: A[]) {
-    const { from: sym2val, to } = this;
-    if (this.passthru) {
-      return digits.map(d => {
-        const t = sym2val.get(d);
-        if (t === void 0) throw new Error("Unrecognized digit");
-        return to[Number(t)];
-      })
-    }
+    const { from: sym2val, to, tb } = this;
+    if (this.passthru) return [...passthru(digits, sym2val, to)];
 
-    return this.toArray(this.fromArray(digits));
+    let n = this.fromArray(digits);
+    const arr: B[] = [];
+    for (; n > 0n; n/= tb) arr.push(to[Number(n % tb)]);
+    return arr.reverse();
   }
 
   fromIterable(digits: Iterable<A>) {
@@ -81,17 +82,9 @@ export class BaseConverter<A,B> {
     const b = to.length;
     if (typeof n === 'bigint') {
       const bb = BigInt(b);
-      while (n > 0n) {
-        const d = n % bb;
-        yield to[Number(d)];
-        n /= bb;
-      }
-    } else while (n > 0) {
-      // Once it's supported, use Math.idivmod(x, y)
-      const d = n % b;
-      yield to[d];
-      n = n / b | 0;
-    }
+      for (; n > 0n; n/= bb) yield to[Number(n % bb)];
+    } else
+      for (; n > 0; n = n / b | 0) yield to[n % b];
   }
 
   fromArray(digits: A[]) {

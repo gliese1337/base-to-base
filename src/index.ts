@@ -105,7 +105,7 @@ export class BaseConverter<A,B> {
   }
 
   toArray(n: number | bigint) {
-    return [...BaseConverter.toIterable(n, this.to)].reverse();
+    return BaseConverter.toArray(n, this.to);
   }
 
   static toArray<T>(n: number | bigint, to: TwoPlus<T>) {

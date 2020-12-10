@@ -12,35 +12,23 @@ const integers = Array.from({ length: 11 }, (_, i) => {
   return n;
 });
 
-describe("Generator tests", () => {
-  for(let radix = 2; radix <= 120; radix += 3) {
-    describe(`Converting to and from base ${ radix }`, () => {
-      const symbols = Array.from({ length: radix }, (_, i) => i) as TwoPlus<number>;
-      for (const n of integers) {
-        it(`should roundtrip ${ n } through base ${ radix }`, () => {
-          const digits = BaseConverter.toIterable(n, symbols);
-          const m = BaseConverter.fromIterable(digits, symbols);
-          expect(m).to.eql(n);
-        });
-      }
-    });
-  }
-});
-
-describe("Array tests", () => {
-  for(let radix = 2; radix <= 120; radix += 3) {
-    describe(`Converting to and from base ${ radix }`, () => {
-      const symbols = Array.from({ length: radix }, (_, i) => i) as TwoPlus<number>;
-      for (const n of integers) {
-        it(`should roundtrip ${ n } through base ${ radix }`, () => {
-          const digits = BaseConverter.toArray(n, symbols);
-          const m = BaseConverter.fromArray(digits, symbols);
-          expect(m).to.eql(n);
-        });
-      }
-    });
-  }
-});
+for(let radix = 2; radix <= 120; radix += 3) {
+  describe(`Converting to and from base ${ radix }`, () => {
+    const symbols = Array.from({ length: radix }, (_, i) => i) as TwoPlus<number>;
+    const c = new BaseConverter(symbols, symbols);
+    for (const n of integers) {
+      it(`should roundtrip ${ n } through base ${ radix } using array`, () => {
+        const m = c.fromArray(c.toArray(n));
+        expect(m).to.eql(n);
+      });
+      
+      it(`should roundtrip ${ n } through base ${ radix } using iterable`, () => {
+        const m = c.fromIterable(c.toIterable(n));
+        expect(m).to.eql(n);
+      });
+    }
+  });
+}
 
 describe("Interbase Conversion tests", () => {
   for(let r1 = 2; r1 <= 12; ++r1) {

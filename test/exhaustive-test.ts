@@ -18,12 +18,12 @@ for(let radix = 2; radix <= 120; radix += 3) {
     const c = new BaseConverter(symbols, symbols);
     for (const n of integers) {
       it(`should roundtrip ${ n } through base ${ radix } using array`, () => {
-        const m = c.fromArray(c.toArray(n));
+        const m = c.fromBE(c.toBE(n));
         expect(m).to.eql(n);
       });
       
       it(`should roundtrip ${ n } through base ${ radix } using iterable`, () => {
-        const m = c.fromIterable(c.toIterable(n));
+        const m = c.fromLE(c.toLE(n));
         expect(m).to.eql(n);
       });
     }
@@ -40,24 +40,24 @@ describe("Interbase Conversion tests", () => {
       describe(`Converting from base ${ r1 } to base ${ r2 }`, () => {
         for (const n of integers) {
           it(`should roundtrip ${ n } through bases ${ r1 } and ${ r2 } in big-endian representation`, () => {
-            const source = BaseConverter.toArray(n, from);
-            const target = BaseConverter.toArray(n, to);
+            const source = BaseConverter.toBE(n, from);
+            const target = BaseConverter.toBE(n, to);
             
             const test = c.convertBE(source);
             expect(test).to.eql(target);
 
-            const m = BaseConverter.fromArray(test, to);
+            const m = BaseConverter.fromBE(test, to);
             expect(''+m).to.eql(''+n);
           });
 
           it(`should roundtrip ${ n } through bases ${ r1 } and ${ r2 } in little-endian representation`, () => {
-            const source = BaseConverter.toIterable(n, from);
-            const target = [...BaseConverter.toIterable(n, to)];
+            const source = BaseConverter.toLE(n, from);
+            const target = [...BaseConverter.toLE(n, to)];
             
             const test = [...c.convertLE(source)];
             expect(test).to.eql(target);
 
-            const m = BaseConverter.fromIterable(test, to);
+            const m = BaseConverter.fromLE(test, to);
             expect(''+m).to.eql(''+n);
           });
         }

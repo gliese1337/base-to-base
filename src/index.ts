@@ -1,6 +1,6 @@
 export type TwoPlus<T> = [T, T, ...T[]];
 
-function fromIterable<T>(digits: Iterable<T>, radix: bigint, sym2val: Map<T, bigint>) {
+function fromLE<T>(digits: Iterable<T>, radix: bigint, sym2val: Map<T, bigint>) {
   let [v, m] = [0n, 1n];
   for (const d of digits) {
     const t = sym2val.get(d);
@@ -12,13 +12,12 @@ function fromIterable<T>(digits: Iterable<T>, radix: bigint, sym2val: Map<T, big
   return v;
 }
 
-function fromArray<T>(digits: T[], radix: bigint, sym2val: Map<T, bigint>) {
-  let [v, m] = [0n, 1n];
-  for (let i = digits.length - 1; i >= 0; i--) {
-    const t = sym2val.get(digits[i]);
+function fromBE<T>(digits: Iterable<T>, radix: bigint, sym2val: Map<T, bigint>) {
+  let v = 0n;
+  for (const d of digits) {
+    const t = sym2val.get(d);
     if (t === void 0) throw new Error("Unrecognized digit");
-    v += t * m;
-    m *= radix;
+    v = v * radix + t;
   }
 
   return v;
@@ -49,36 +48,59 @@ export class BaseConverter<A,B> {
     const { from: sym2val, to, tb } = this;
     if (this.passthru) yield * passthru(digits, sym2val, to);
     else {
-      let n = this.fromIterable(digits);
+      let n = this.fromLE(digits);
       for (; n > 0n; n/= tb) yield to[Number(n % tb)];
     }
   }
 
-  convertBE(digits: A[]) {
+  convertLE2BE(digits: Iterable<A>) {
+    const { from: sym2val, to, tb } = this;
+    if (this.passthru) {
+      return [...passthru(digits, sym2val, to)].reverse();
+    } else {
+      let n = this.fromLE(digits);
+      const arr: B[] = [];
+      for (; n > 0n; n/= tb) arr.push(to[Number(n % tb)]);
+      return arr.reverse();
+    }
+  }
+
+  convertBE(digits: Iterable<A>) {
     const { from: sym2val, to, tb } = this;
     if (this.passthru) return [...passthru(digits, sym2val, to)];
 
-    let n = this.fromArray(digits);
+    let n = this.fromBE(digits);
     const arr: B[] = [];
     for (; n > 0n; n/= tb) arr.push(to[Number(n % tb)]);
     return arr.reverse();
   }
 
-  fromIterable(digits: Iterable<A>) {
-    return fromIterable(digits, this.fb, this.from);
+  * convertBE2LE(digits: Iterable<A>) {
+    const { from: sym2val, to, tb } = this;
+    if (this.passthru) {
+      const arr = [...passthru(digits, sym2val, to)];
+      for (let i = arr.length - 1; i >= 0; i--) yield arr[i];
+    }
+
+    let n = this.fromBE(digits);
+    for (; n > 0n; n/= tb) yield to[Number(n % tb)];
   }
 
-  static fromIterable<T>(digits: Iterable<T>, from: TwoPlus<T>) {
+  fromLE(digits: Iterable<A>) {
+    return fromLE(digits, this.fb, this.from);
+  }
+
+  static fromLE<T>(digits: Iterable<T>, from: TwoPlus<T>) {
     const b = BigInt(from.length);
     const sym2val = new Map(from.map((v, i) => [v, BigInt(i)]));
-    return fromIterable(digits, b, sym2val);
+    return fromLE(digits, b, sym2val);
   }
 
-  toIterable(n: number | bigint) {
-    return BaseConverter.toIterable(n, this.to);
+  toLE(n: number | bigint) {
+    return BaseConverter.toLE(n, this.to);
   }
 
-  static * toIterable<T>(n: number | bigint, to: TwoPlus<T>) {
+  static * toLE<T>(n: number | bigint, to: TwoPlus<T>) {
     const b = to.length;
     if (typeof n === 'bigint') {
       const bb = BigInt(b);
@@ -87,21 +109,21 @@ export class BaseConverter<A,B> {
       for (; n > 0; n = n / b | 0) yield to[n % b];
   }
 
-  fromArray(digits: A[]) {
-    return fromArray(digits, this.fb, this.from);
+  fromBE(digits: Iterable<A>) {
+    return fromBE(digits, this.fb, this.from);
   }
 
-  static fromArray<T>(digits: T[], from: TwoPlus<T>) {
+  static fromBE<T>(digits: Iterable<T>, from: TwoPlus<T>) {
     const b = BigInt(from.length);
     const sym2val = new Map(from.map((v, i) => [v, BigInt(i)]));
-    return fromArray(digits, b, sym2val);
+    return fromBE(digits, b, sym2val);
   }
 
-  toArray(n: number | bigint) {
-    return BaseConverter.toArray(n, this.to);
+  toBE(n: number | bigint) {
+    return BaseConverter.toBE(n, this.to);
   }
 
-  static toArray<T>(n: number | bigint, to: TwoPlus<T>) {
-    return [...BaseConverter.toIterable(n, to)].reverse();
+  static toBE<T>(n: number | bigint, to: TwoPlus<T>) {
+    return [...BaseConverter.toLE(n, to)].reverse();
   }
 }

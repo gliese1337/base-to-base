@@ -1,0 +1,24 @@
+{
+  "name": "base-to-base",
+  "version": "1.0.0",
+  "description": "Convert integers between arbitrary bases.",
+  "main": "bin/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint . --ext .ts --fix"
+  },
+  "keywords": [
+    "integer",
+    "base",
+    "conversion"
+  ],
+  "author": "Logan R. Kearsley",
+  "license": "MIT",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.9.1",
+    "@typescript-eslint/parser": "^4.9.1",
+    "eslint": "^7.15.0",
+    "typescript": "^4.1.2"
+  }
+}

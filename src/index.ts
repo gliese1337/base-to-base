@@ -1,9 +1,11 @@
+export type TwoPlus<T> = [T, T, ...T[]];
+
 export class BaseConverter<A,B> {
   private from: Map<A, bigint>;
   private fb: bigint;
   private tb: bigint;
 
-  constructor(from: A[], private to: B[]) {
+  constructor(from: TwoPlus<A>, private to: TwoPlus<B>) {
     this.from = new Map(from.map((v, i) => [v, BigInt(i)]));
     this.fb = BigInt(from.length);
     this.tb = BigInt(to.length);
@@ -44,7 +46,7 @@ export class BaseConverter<A,B> {
     return arr.reverse();
   }
 
-  static fromIterator<T>(digits: Iterable<T>, from: T[]) {
+  static fromIterator<T>(digits: Iterable<T>, from: TwoPlus<T>) {
     const b = BigInt(from.length);
     const sym2val = new Map(from.map((v, i) => [v, BigInt(i)]));
 
@@ -59,7 +61,7 @@ export class BaseConverter<A,B> {
     return v;
   }
 
-  static * toIterator<T>(n: number | bigint, to: T[]) {
+  static * toIterator<T>(n: number | bigint, to: TwoPlus<T>) {
     const b = to.length;
     if (typeof n === 'bigint') {
       const bb = BigInt(b);
@@ -76,7 +78,7 @@ export class BaseConverter<A,B> {
     }
   }
 
-  static fromArray<T>(digits: T[], from: T[]) {
+  static fromArray<T>(digits: T[], from: TwoPlus<T>) {
     const b = BigInt(from.length);
     const sym2val = new Map(from.map((v, i) => [v, BigInt(i)]));
 
@@ -91,7 +93,7 @@ export class BaseConverter<A,B> {
     return v;   
   }
 
-  static toArray<T>(n: number | bigint, to: T[]) {
+  static toArray<T>(n: number | bigint, to: TwoPlus<T>) {
     return [...BaseConverter.toIterator(n, to)].reverse();
   }
 }

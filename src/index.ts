@@ -25,6 +25,7 @@ export class BaseConverter<A,B> {
       }
       m *= fb;
     }
+    if (v > 0n) yield to[Number(v)];
   }
 
   convertBE(digits: A[]) {
@@ -42,7 +43,7 @@ export class BaseConverter<A,B> {
       }
       m *= fb;
     }
-
+    if (v > 0n) arr.push(to[Number(v)]);
     return arr.reverse();
   }
 
@@ -90,7 +91,7 @@ export class BaseConverter<A,B> {
       m *= b;
     }
 
-    return v;   
+    return v;
   }
 
   static toArray<T>(n: number | bigint, to: TwoPlus<T>) {

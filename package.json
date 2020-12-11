@@ -1,8 +1,9 @@
 {
   "name": "bigint-repr-converter",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "Convert integers between arbitrary bases.",
   "main": "bin/index.js",
+  "files": ["bin/index.js", "bin/index.d.ts"],
   "scripts": {
     "build": "tsc",
     "test": "mocha -r ts-node/register test/**/*-test.ts",
@@ -30,9 +31,6 @@
     "jsmin": "^1.0.1",
     "mocha": "^8.2.1",
     "ts-node": "^9.1.1"
-  },
-  "bin": {
-    "base-to-base": "index.js"
   },
   "directories": {
     "test": "test"

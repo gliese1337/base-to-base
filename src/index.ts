@@ -1,8 +1,17 @@
 export type TwoPlus<T> = [T, T, ...T[]];
 
-function fromLE<T>(digits: Iterable<T>, radix: bigint, sym2val: Map<T, bigint>) {
+function fromLE<T>(digits: Iterable<T>, radix: bigint, sym2val: Map<T, bigint>, bijective: boolean) {
   let [v, m] = [0n, 1n];
-  for (const d of digits) {
+  if (bijective) {
+    radix--;
+    for (const d of digits) {
+      const t = sym2val.get(d);
+      if (t === void 0) throw new Error("Unrecognized digit");
+      if (t === 0n) continue;
+      v += t * m;
+      m *= radix;
+    }
+  } else for (const d of digits) {
     const t = sym2val.get(d);
     if (t === void 0) throw new Error("Unrecognized digit");
     v += t * m;
@@ -12,9 +21,17 @@ function fromLE<T>(digits: Iterable<T>, radix: bigint, sym2val: Map<T, bigint>) 
   return v;
 }
 
-function fromBE<T>(digits: Iterable<T>, radix: bigint, sym2val: Map<T, bigint>) {
+function fromBE<T>(digits: Iterable<T>, radix: bigint, sym2val: Map<T, bigint>, bijective: boolean) {
   let v = 0n;
-  for (const d of digits) {
+  if (bijective) {
+    radix--;
+    for (const d of digits) {
+      const t = sym2val.get(d);
+      if (t === void 0) throw new Error("Unrecognized digit");
+      if (t === 0n) continue;
+      v = v * radix + t;
+    }
+  } else for (const d of digits) {
     const t = sym2val.get(d);
     if (t === void 0) throw new Error("Unrecognized digit");
     v = v * radix + t;
@@ -64,21 +81,44 @@ function digit_ratio(n: number, m: number) {
   return n < m ? [z/g, w/g] : [w/g, z/g];
 }
 
+export type Base<T> = TwoPlus<T> | { bijective: boolean; symbols: TwoPlus<T> };
+
 export class BaseConverter<A,B> {
   private from: Map<A, bigint>;
+  private to: TwoPlus<B>;
   private fb: bigint;
   private tb: bigint;
+  private fbijective: boolean;
+  private tbijective: boolean;
   private idigits: number;
   private odigits: number;
   private passthru: boolean;
 
-  constructor(from: TwoPlus<A>, private to: TwoPlus<B>, stream = true) {
-    this.from = new Map(from.map((v, i) => [v, BigInt(i)]));
-    this.fb = BigInt(from.length);
-    this.tb = BigInt(to.length);
-    this.passthru = this.fb === this.tb;
-    [this.idigits, this.odigits] = stream ? 
-      digit_ratio(from.length, to.length) : [Infinity, Infinity];
+  constructor(from: Base<A>, to: Base<B>, stream = true) {
+    const { fbijective, fsymbols, fradix } = Array.isArray(from) ? 
+      { fbijective: false, fsymbols: from, fradix: from.length } :
+      {
+        fbijective: from.bijective,
+        fsymbols: from.symbols,
+        fradix: from.symbols.length,
+      };
+    const { tbijective, tsymbols, tradix } = Array.isArray(to) ? 
+      { tbijective: false, tsymbols: to, tradix: to.length } :
+      {
+        tbijective: to.bijective,
+        tsymbols: to.symbols,
+        tradix: to.symbols.length,
+      };
+
+    this.from = new Map(fsymbols.map((v, i) => [v, BigInt(i)]));
+    this.to = tsymbols;
+    this.fb = BigInt(fradix);
+    this.tb = BigInt(tradix);
+    this.fbijective = fbijective;
+    this.tbijective = tbijective;
+    this.passthru = fradix === tradix && fbijective === tbijective;
+    [this.idigits, this.odigits] = stream && !(fbijective || tbijective) ? 
+      digit_ratio(fradix, tradix) : [Infinity, Infinity];
   }
 
   * convertLE(digits: Iterable<A>) {
@@ -111,79 +151,95 @@ export class BaseConverter<A,B> {
         n /= tb;
       }
     } else {
-      yield * BaseConverter.toLE(fromLE(digits, fb, sym2val), to);
+      yield * BaseConverter.toLE(
+        fromLE(digits, fb, sym2val, this.fbijective),
+        to, this.tbijective,
+      );
     }
   }
 
   convertLE2BE(digits: Iterable<A>) {
-    const { from: sym2val, to, tb } = this;
-    if (this.passthru) return [...passthru(digits, sym2val, to)].reverse();
-
-    let n = this.fromLE(digits);
-    const arr: B[] = [];
-    for (; n > 0n; n/= tb) arr.push(to[Number(n % tb)]);
-    return arr.reverse();
+    const { from: sym2val, to} = this;
+    return this.passthru ?
+      [...passthru(digits, sym2val, to)].reverse() :
+      this.toBE(this.fromLE(digits));
   }
 
   convertBE(digits: Iterable<A>) {
-    const { from: sym2val, to, tb } = this;
-    if (this.passthru) return [...passthru(digits, sym2val, to)];
-
-    let n = this.fromBE(digits);
-    const arr: B[] = [];
-    for (; n > 0n; n/= tb) arr.push(to[Number(n % tb)]);
-    return arr.reverse();
+    const { from: sym2val, to} = this;
+    return this.passthru ?
+      [...passthru(digits, sym2val, to)] :
+      this.toBE(this.fromBE(digits));
   }
 
   * convertBE2LE(digits: Iterable<A>) {
-    const { from: sym2val, to, tb } = this;
+    const { from: sym2val, to } = this;
     if (this.passthru) {
       const arr = [...passthru(digits, sym2val, to)];
       for (let i = arr.length - 1; i >= 0; i--) yield arr[i];
     }
 
-    let n = this.fromBE(digits);
-    for (; n > 0n; n/= tb) yield to[Number(n % tb)];
+    return this.toLE(this.fromBE(digits));
   }
 
   fromLE(digits: Iterable<A>) {
-    return fromLE(digits, this.fb, this.from);
+    return fromLE(digits, this.fb, this.from, this.fbijective);
   }
 
-  static fromLE<T>(digits: Iterable<T>, from: TwoPlus<T>) {
+  static fromLE<T>(digits: Iterable<T>, from: TwoPlus<T>, bijective = false) {
     const b = BigInt(from.length);
     const sym2val = new Map(from.map((v, i) => [v, BigInt(i)]));
-    return fromLE(digits, b, sym2val);
+    return fromLE(digits, b, sym2val, bijective);
   }
 
   toLE(n: number | bigint) {
-    return BaseConverter.toLE(n, this.to);
+    return BaseConverter.toLE(n, this.to, this.tbijective);
   }
 
-  static * toLE<T>(n: number | bigint, to: TwoPlus<T>) {
+  static * toLE<T>(n: number | bigint, to: TwoPlus<T>, bijective = false) {
     const b = to.length;
-    if (typeof n === 'bigint') {
-      const bb = BigInt(b);
-      for (; n > 0n; n/= bb) yield to[Number(n % bb)];
-    } else
-      for (n = n | 0; n > 0; n = n / b | 0) yield to[n % b];
+    if (bijective) {
+      if (n === 0 || n === 0n) yield to[0];
+      else if (typeof n === 'bigint') {
+        const k = BigInt(b - 1);
+        while (n !== 0n) {
+          const qp: bigint =
+            n % k === 0n ? n / k - 1n : n / k;
+          yield to[Number(n - qp * k)];
+          n = qp;
+        }
+      } else {
+        const k = b - 1;
+        while (n !== k) {
+          const qp: number = Math.ceil(n / k) - 1;
+          yield to[n - qp * k];
+          n = qp;
+        }
+      }
+    } else {
+      if (typeof n === 'bigint') {
+        const bb = BigInt(b);
+        for (; n > 0n; n/= bb) yield to[Number(n % bb)];
+      } else
+        for (n = n | 0; n > 0; n = n / b | 0) yield to[n % b];
+    }
   }
 
   fromBE(digits: Iterable<A>) {
-    return fromBE(digits, this.fb, this.from);
+    return fromBE(digits, this.fb, this.from, this.fbijective);
   }
 
-  static fromBE<T>(digits: Iterable<T>, from: TwoPlus<T>) {
+  static fromBE<T>(digits: Iterable<T>, from: TwoPlus<T>, bijective = false) {
     const b = BigInt(from.length);
     const sym2val = new Map(from.map((v, i) => [v, BigInt(i)]));
-    return fromBE(digits, b, sym2val);
+    return fromBE(digits, b, sym2val, bijective);
   }
 
   toBE(n: number | bigint) {
-    return BaseConverter.toBE(n, this.to);
+    return BaseConverter.toBE(n, this.to, this.tbijective);
   }
 
-  static toBE<T>(n: number | bigint, to: TwoPlus<T>) {
-    return [...BaseConverter.toLE(n, to)].reverse();
+  static toBE<T>(n: number | bigint, to: TwoPlus<T>, bijective = false) {
+    return [...BaseConverter.toLE(n, to, bijective)].reverse();
   }
 }

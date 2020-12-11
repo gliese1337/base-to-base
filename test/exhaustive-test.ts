@@ -17,12 +17,12 @@ for(let radix = 2; radix <= 120; radix += 3) {
     const symbols = Array.from({ length: radix }, (_, i) => i) as TwoPlus<number>;
     const c = new BaseConverter(symbols, symbols);
     for (const n of integers) {
-      it(`should roundtrip ${ n } through base ${ radix } using array`, () => {
+      it(`should roundtrip ${ n } through base ${ radix } in big-endian representation`, () => {
         const m = c.fromBE(c.toBE(n));
         expect(m).to.eql(n);
       });
       
-      it(`should roundtrip ${ n } through base ${ radix } using iterable`, () => {
+      it(`should roundtrip ${ n } through base ${ radix } in little-endian representation`, () => {
         const m = c.fromLE(c.toLE(n));
         expect(m).to.eql(n);
       });
@@ -32,9 +32,9 @@ for(let radix = 2; radix <= 120; radix += 3) {
 
 describe("Interbase Conversion tests", () => {
   for(let r1 = 2; r1 <= 12; ++r1) {
-    const from = Array.from({ length: r1 }, (_, i) => i) as TwoPlus<number>;  
+    const from = Array.from({ length: r1 }, (_, i) => i+1) as TwoPlus<number>;  
     for(let r2 = 2; r2 <= 12; ++r2) {
-      const to = Array.from({ length: r2 }, (_, i) => i+1) as TwoPlus<number>;
+      const to = Array.from({ length: r2 }, (_, i) => i) as TwoPlus<number>;
       const c = new BaseConverter(from, to);
 
       describe(`Converting from base ${ r1 } to base ${ r2 }`, () => {

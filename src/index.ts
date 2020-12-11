@@ -31,7 +31,7 @@ function * passthru<A, B>(digits: Iterable<A>, sym2val: Map<A, bigint>, to: B[])
   }
 }
 
-export function digit_ratio(n: number, m: number) {
+function digit_ratio(n: number, m: number) {
   if (n === m) return [1, 1];
   const [a, b] = n < m ? [n, m] : [m, n];
 
@@ -166,7 +166,7 @@ export class BaseConverter<A,B> {
       const bb = BigInt(b);
       for (; n > 0n; n/= bb) yield to[Number(n % bb)];
     } else
-      for (; n > 0; n = n / b | 0) yield to[n % b];
+      for (n = n | 0; n > 0; n = n / b | 0) yield to[n % b];
   }
 
   fromBE(digits: Iterable<A>) {

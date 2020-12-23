@@ -73,7 +73,7 @@ function digit_ratio(n: number, m: number) {
 
   // put GCD(w, z) in g
   let [g, f] = [w, z];
-  while (f) [f, g] = [g % f, f];
+  while (f) [f, g] = [g - f * Math.floor(g/f), f];
 
   // return x == the factor by which
   // to multiply w so as to reach its
